@@ -9,6 +9,15 @@
 %% --- MAIN EXECUTION ---
 image_path = 'heatmap_multiple.png';
 
+% Single image
+%land_sea_heatmap(image_path);
+
+% Batch process a folder
+imgs = dir('maps/*.jpg');
+for i = 1:length(imgs)
+    land_sea_heatmap(fullfile('maps', imgs(i).name));
+end
+
 [curves, color_img, mask] = extract_color_contours(image_path);
 
 %% --- PLOTTING ---
@@ -122,4 +131,123 @@ function img = draw_filled_circle(img, cx, cy, radius, value)
     [C, R] = meshgrid(1:cols, 1:rows);
     mask = (C - cx).^2 + (R - cy).^2 <= radius^2;
     img(mask) = value;
+end
+
+%% =========================================================
+%% Land vs Sea Heatmap Generator
+%% =========================================================
+
+function land_sea_heatmap(image_path)
+    %% 1. Load image
+    img = imread(image_path);
+    img_double = double(img) / 255;
+
+    %% 2. Convert to HSV for better color segmentation
+    hsv = rgb2hsv(img_double);
+    H = hsv(:,:,1);
+    S = hsv(:,:,2);
+    V = hsv(:,:,3);
+
+    %% 3. Detect SEA (blue tones)
+    % Hue around 0.55-0.75 (cyan to blue), decent saturation
+    sea_mask = (H >= 0.50 & H <= 0.75) & ...
+               (S >= 0.15) & ...
+               (V >= 0.15);
+
+    %% 4. Detect LAND (greens, yellows, browns, sandy tones)
+    % Green land
+    green_land = (H >= 0.20 & H <= 0.45) & (S >= 0.10);
+    % Sandy/desert/urban (low saturation, mid-high brightness)
+    sandy_land = (S < 0.25) & (V > 0.35) & ~sea_mask;
+    % Brown/earthy tones
+    brown_land = (H >= 0.05 & H <= 0.12) & (S >= 0.15);
+
+    land_mask = green_land | sandy_land | brown_land;
+
+    %% 5. Clean up masks with morphological ops
+    se = strel('disk', 5);
+    sea_mask  = imopen(sea_mask,  se);
+    sea_mask  = imclose(sea_mask, se);
+    land_mask = imopen(land_mask,  se);
+    land_mask = imclose(land_mask, se);
+
+    % Resolve overlap: sea takes priority if both detected
+    land_mask = land_mask & ~sea_mask;
+
+    % Unknown/unclassified pixels
+    unknown_mask = ~sea_mask & ~land_mask;
+
+    %% 6. Build intensity map for heatmap
+    % Land = high intensity (hot), Sea = low intensity (cold), Unknown = mid
+    intensity = zeros(size(H));
+    intensity(land_mask)    = 1.0;   % land   → hot (red)
+    intensity(sea_mask)     = 0.0;   % sea    → cold (blue)
+    intensity(unknown_mask) = 0.45;  % unknown → neutral
+
+    %% 7. Smooth the intensity for a natural heatmap look
+    intensity_smooth = imgaussfilt(intensity, 8);
+    intensity_smooth = intensity_smooth - min(intensity_smooth(:));
+    intensity_smooth = intensity_smooth / max(intensity_smooth(:));
+
+    %% 8. Apply JET colormap
+    cmap    = jet(256);
+    idx     = gray2ind(intensity_smooth, 256);
+    heatmap = ind2rgb(idx, cmap);
+
+    %% 9. Blend heatmap over original
+    alpha   = 0.65;
+    blended = alpha * heatmap + (1 - alpha) * img_double;
+    blended = max(0, min(1, blended));  % clamp
+
+    %% 10. Save outputs
+    [~, name, ~] = fileparts(image_path);
+    imwrite(uint8(heatmap * 255), sprintf('%s_heatmap.png',  name));
+    imwrite(uint8(blended * 255), sprintf('%s_blended.png',  name));
+    imwrite(uint8(land_mask) * 255, sprintf('%s_land_mask.png', name));
+    imwrite(uint8(sea_mask)  * 255, sprintf('%s_sea_mask.png',  name));
+    fprintf('Saved outputs for: %s\n', image_path);
+
+    %% 11. Display
+    figure('Position', [50, 50, 1600, 800]);
+
+    subplot(2, 3, 1);
+    imshow(img);
+    title('Original Map');
+    axis off;
+
+    subplot(2, 3, 2);
+    imshow(land_mask);
+    title('Land Mask');
+    axis off;
+
+    subplot(2, 3, 3);
+    imshow(sea_mask);
+    title('Sea Mask');
+    axis off;
+
+    subplot(2, 3, 4);
+    imshow(heatmap);
+    title('Heatmap (Red=Land, Blue=Sea)');
+    axis off;
+
+    subplot(2, 3, 5);
+    imshow(blended);
+    title('Blended (Heatmap + Original)');
+    axis off;
+
+    subplot(2, 3, 6);
+    % Coverage stats bar chart
+    total  = numel(H);
+    land_pct    = 100 * sum(land_mask(:))    / total;
+    sea_pct     = 100 * sum(sea_mask(:))     / total;
+    unknown_pct = 100 * sum(unknown_mask(:)) / total;
+    bar([land_pct, sea_pct, unknown_pct], 'FaceColor', 'flat', ...
+        'CData', [0.8 0.3 0.1; 0.1 0.4 0.9; 0.6 0.6 0.6]);
+    set(gca, 'XTickLabel', {'Land', 'Sea', 'Unknown'});
+    ylabel('Coverage (%)');
+    title('Detection Stats');
+    ylim([0 100]);
+    grid on;
+
+    sgtitle(sprintf('Land vs Sea Analysis: %s', image_path), 'FontSize', 14);
 end
