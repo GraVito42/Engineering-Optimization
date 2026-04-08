@@ -4,7 +4,8 @@ global Par
 % --- Parameters ---
 Par.A = [0; 0];      %start point
 Par.B = [10; 0];     %end point
-Par.dx = 0.01;       %time step for discretization
+Par.dc = 0.01;       %time step for discretization
+Par.LengthReference = norm(Par.B - Par.A);  % [m]
 
 % Constraint parameters
 Par.buffer           = 0.1;     % buffer value for obstacle constraints
@@ -51,5 +52,5 @@ Par.obs = obs_gallery; % Combine all obstacles into one matrix
 n_vars   = 13;                                            % Change this to any integer!
 x0       = [1, 1, 1, 1, 1, 1, 0, -1, -1, -1, -1, -1, -1]*2; 
 
-[cost, details]     = cost_function(x0, Par)
+cost     = cost_function(x0, Par)
 [g, ceq] =            Constraint(x0, Par)

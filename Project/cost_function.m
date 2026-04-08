@@ -11,13 +11,12 @@ function total_cost = cost_function(alpha, Par)
     P                   = bernstein_path(alpha,Par);
     [v, ~, j, k, dt]    = cinematics(P, Par);
 
-    % 1. Distance Cost (L2 Norm of velocity)
-    % Sum of infinitesimal displacements: ds = |v| * dt
-    step_lengths        = norm(v);
-    L                   = sum(step_lengths);
+    % 1. Path length [m]  — sum of physical step lengths
+    dP                  = diff(P);
+    L                   = sum(vecnorm(dP, 2, 2)) * Par.LengthReference;  % Scale by physical length reference
     
     % 2. Curvature Cost (Discrete Approximation)                           
-    K                   = norm(k)^2 * dt;             % Penalize squared curvature
+    K                   = sum(k.^2) * dt;             % Penalize squared curvature
     
     % 3. Safety cost (Reciprocal of minimum distance to obstacles)
     [~, d]              = obstacle_distance(P, Par);
