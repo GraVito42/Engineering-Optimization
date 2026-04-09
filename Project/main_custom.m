@@ -15,7 +15,7 @@ Par.LengthReference  = 100;  % real physical distance A→B [m]
 Par.w = [1.0 1.0 10.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
-Par.buffer              = 1/100 * norm(Par.B - Par.A);         % buffer value for obstacle constraints
+Par.buffer              = 1/1000 * norm(Par.B - Par.A);         % buffer value for obstacle constraints
 Par.max_velocity        = 5.0;         % Maximum velocity constraint
 Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
 Par.max_curvature       = 0.5;         % Maximum curvature constraint
@@ -170,7 +170,7 @@ if isempty(fcmin)
     
             step = step + 1;
             x0 = rand(n_vars,1);
-            c = Constraint(x0, Par);
+            [c, tilde] = Constraint(x0, Par);
     
             % If a point is feasible, add it to the array
             if max(c) < 1e-4
