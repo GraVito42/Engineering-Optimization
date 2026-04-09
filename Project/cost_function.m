@@ -1,4 +1,4 @@
-function total_cost = cost_function(alpha, Par)
+function total_cost = cost_function(alpha_n, Par)
 % INPUTS:
 %   P  : [Nx2] Matrix of trajectory points (x, y)
 %   dx : Scalar, spatial step between samples
@@ -7,13 +7,18 @@ function total_cost = cost_function(alpha, Par)
 %   total_cost : Weighted sum of length and energy and safety
 %   details    : Structure containing individual cost components
 
+    global ub lb
+
+    alpha = alpha_n .* (ub - lb) + lb;  % Scale from [0,1] to actual bounds
+
     % Compute curve features (Coords, Velocity, Acceleration, Curvature)
     P                   = bernstein_path(alpha,Par);
     [v, ~, j, k, dt, dx]    = kinematics(P, Par);
 
+
     % 1. Path length [m]  — sum of physical step lengths
     L1                   = sum(dx);
-    L                   = L1 / Par.LengthReference;  % Normalized length cost 
+    L                   = L1 / Par.LengthReference - 1;  % Normalized length cost 
     
     % 2. Curvature Cost (Discrete Approximation)                           
     K1                   = sum(k.^2) * dt;             % Penalize squared curvature
@@ -21,7 +26,7 @@ function total_cost = cost_function(alpha, Par)
 
     % 3. Safety cost (Reciprocal of minimum distance to obstacles)
     [~, d]              = obstacle_distance(P, Par);
-    Phi                 = (1/sum(d) - Par.buffer)^2; 
+    Phi                 = abs(1/sum(d) - Par.buffer); 
     D                   = max(0, Phi);                      % Only penalize if within buffer distance
 
     % 4. Time cost
