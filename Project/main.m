@@ -7,16 +7,18 @@ Par.B                = [10; 0];     %end point
 Par.v_avg            = 2.0;         %average velocity for our UAV
 Par.dc               = 0.01;        % parametric step (t in [0,1]), controls curve resolution only
 
-Par.LengthReference  = norm(Par.B - Par.A);  % real physical distance A→B [m]
+Par.LengthReference  = 100;  % real physical distance A→B [m]
 
 % --- Cost function weights ---
 Par.w = [1.0 1.0 10.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
-Par.buffer           = 0.1;         % buffer value for obstacle constraints
-Par.max_velocity     = 5.0;         % Maximum velocity constraint
-Par.max_acceleration = 3.0;         % Maximum acceleration constraint
-Par.max_curvature    = 0.5;         % Maximum curvature constraint
+Par.buffer              = 0.5;         % buffer value for obstacle constraints
+Par.max_velocity        = 5.0;         % Maximum velocity constraint
+Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
+Par.max_curvature       = 0.5;         % Maximum curvature constraint
+Par.curvature_reference = 0.1; 
+Par.jerk_reference      = 1;          % Reference value to normalise jerk
 
 % --- obstacles --------------------------------------------------------------
 

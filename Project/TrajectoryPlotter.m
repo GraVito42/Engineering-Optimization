@@ -54,7 +54,7 @@ function stop = TrajectoryPlotter(x, optimValues, state)
         [g, ~] = Constraint(x, Par);
 
         n_obs = size(Par.obs, 1);
-        [v, a, ~, k] = cinematics(P, Par);
+        [v, a, ~, k, ~, ~] = kinematics(P, Par);
         n_v = length(vecnorm(v,2,2));
         n_a = length(vecnorm(a,2,2));
         n_k = length(k);

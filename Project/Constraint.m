@@ -4,7 +4,7 @@ function [g, ceq] = Constraint(alpha, Par)
 
     [g, ~] = obstacle_distance(P, Par); % Obstacle constraint
 
-    [v, a, ~, k] = cinematics(P, Par);
+    [v, a, ~, k, ~, ~] = kinematics(P, Par);
 
     max_velocity = Par.max_velocity;
     v_mag = vecnorm(v, 2, 2); 

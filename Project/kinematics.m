@@ -1,4 +1,4 @@
-function [v, a, j, k, dt] = cinematics(P, Par)
+function [v, a, j, k, dt, dx] = kinematics(P, Par)
 %CINEMATICS  Compute kinematic quantities along a path with physical scaling.
 %
 %   P   : [N x 2] path points in PARAMETRIC coordinates (A→B = unit vector)
@@ -18,7 +18,8 @@ function [v, a, j, k, dt] = cinematics(P, Par)
     % The parametric curve is always 1 (unit vector) [param-unit].
     % Par.LengthReference gives its true physical length reference [m].
     % Every parametric length unit therefore corresponds to lambda metres.
-    lambda      = Par.LengthReference;         % [m / param-unit]
+    lambda      = Par.LengthReference/(norm(Par.B - Par.A,2));         % [m / param-unit]
+    dx          = lambda * ds_param;           % physical step between samples [m]
 
     % --- 3. Physical arc length and travel time ---
     L_phys      = L_param * lambda;                % true path length [m]
