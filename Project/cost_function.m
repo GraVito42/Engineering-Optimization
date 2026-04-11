@@ -1,4 +1,4 @@
-function total_cost = cost_function(alpha, Par)
+function total_cost = cost_function(alpha_n, Par)
 % INPUTS:
 %   P  : [Nx2] Matrix of trajectory points (x, y)
 %   dx : Scalar, spatial step between samples
