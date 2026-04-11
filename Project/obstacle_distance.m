@@ -31,14 +31,14 @@ function [g, d] = obstacle_distance(P, Par)
             min_dist = min(min_dist_to_curve);
             
             % Constraint: buffer - min_dist <= 0 (Negative means safe)
-            g(i) = buffer - min_dist;
+            g(i) = (buffer - min_dist) / buffer;
             
             % For generic shapes, d(i) represents the closest distance to the boundary
             d(i) = min_dist; 
         end
         
     elseif isnumeric(Par.obs)
-        % --- OLDER VERSION: Rounded-Shape Obstacles ---
+        % --- Rounded-Shape Obstacles ---
         % centers: [Mx2], radii: [Mx1], P: [Nx2]
         centers = Par.obs(:,1:2);
         radii   = Par.obs(:,3);
@@ -48,16 +48,18 @@ function [g, d] = obstacle_distance(P, Par)
         d = zeros(num_obs, 1);
         
         for i = 1:num_obs
-            % Distance from every point on path to this specific obstacle center
-            dist_sq = (P(:,1) - centers(i,1)).^2 + (P(:,2) - centers(i,2)).^2;
-            dist = sqrt(dist_sq);
-            
-            % Constraint: radius - min_dist <= 0  (Negative means safe)
-            % fmincon expects g <= 0
-            g(i) = (radii(i) + buffer) - min(dist);
-            
-            % Distance to the center of the obstacle
-            d(i) = min(dist);
+            % Distance from every path point to obstacle center
+            dist = sqrt((P(:,1) - centers(i,1)).^2 + (P(:,2) - centers(i,2)).^2);
+        
+            % Surface clearance: subtract radius to get distance to surface
+            % Negative if path penetrates the obstacle
+            clearance = min(dist) - radii(i);          % [m] surface distance
+        
+            % Normalized constraint: g=0 at safety boundary, g=1 at surface
+            g(i) = (buffer - clearance) / buffer;
+        
+            % Surface clearance for cost function safety barrier
+            d(i) = clearance;                          % [m] NOT center distance
         end
         
     else

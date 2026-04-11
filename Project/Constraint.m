@@ -4,8 +4,7 @@ function [g, ceq] = Constraint(alpha, Par)
     [v, a, ~, k, ~, ~] = kinematics(P, Par);
 
     % 1. Obstacle constraint
-    [g_obs, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
-    g = g_obs / Par.d_safe;
+    [g, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
 
     % 2. Velocity constraint
     v_mag = vecnorm(v, 2, 2);
