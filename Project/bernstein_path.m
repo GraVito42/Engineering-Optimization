@@ -3,8 +3,8 @@ function P = bernstein_path(alpha, Par)
     n = length(alpha);
     A = Par.A;      
     B = Par.B;     
-    dx = Par.dx;       
-    t = (0:dx:1)';   
+    dc = Par.dc;       
+    t = (0:dc:1)';   
     
     % Geometry setup
     dir_vec = B - A;

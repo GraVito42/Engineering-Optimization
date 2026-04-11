@@ -4,17 +4,19 @@ global Par
 % --- UAV model parameters ---
 Par.A                = [0; 0];      %start point
 Par.B                = [10; 0];     %end point
-Par.v_avg            = 2.0;       %average velocity for our UAV
-Par.dx               = 0.01;       %time step for discretization
+Par.v_avg            = 2.0;         %average velocity for our UAV
+Par.dc               = 0.01;        % parametric step (t in [0,1]), controls curve resolution only
+
+Par.LengthReference  = 100;  % real physical distance A→B [m]
 
 % --- Cost function weights ---
-Par.w = [1.0 1.0 10.0 1.0 1.0];   % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 10.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
-Par.buffer           = 0.1;     % buffer value for obstacle constraints
-Par.max_velocity     = 5.0;     % Maximum velocity constraint
-Par.max_acceleration = 3.0;     % Maximum acceleration constraint
-Par.max_curvature    = 0.5;     % Maximum curvature constraint
+Par.d_safe              = 0.5;         % Minimum safe distance from obstacle [m]
+Par.max_velocity        = 5.0;         % Maximum velocity constraint
+Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
+Par.max_curvature       = 0.5;         % Maximum curvature constraint
 
 % --- obstacles --------------------------------------------------------------
 
@@ -61,13 +63,13 @@ options.Display                     = 'iter-detailed';
 options.Algorithm                   = 'sqp';
 options.FunValCheck                 = 'off';       
 options.MaxIter                     = 500;         
-options.ScaleProblem                = true;        % Normalization of the variables
+options.ScaleProblem                = true;                     % Normalization of the variables
 options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
 options.FiniteDifferenceType        = 'central';
 options.FiniteDifferenceStepSize    = 1e-2;
-options.StepTolerance               = 1e-15; % Convergence criterion in step size
-options.OptimalityTolerance         = 1e-9; % Convergence criterion in first order optimality
-options.ConstraintTolerance         = 1e-4; % Determines the contraint tolerance
+options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
+options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
+options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
 options.MaxFunEvals                 = 100000;
 options.OutputFcn                   = {@TrajectoryPlotter};
 
