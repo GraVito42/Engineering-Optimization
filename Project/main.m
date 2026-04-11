@@ -4,8 +4,8 @@ global Par ub lb
 addpath('island_images');
 
 % --- UAV model parameters ---
-Par.A                = [0; 0];      %start point
-Par.B                = [10; 0];     %end point
+Par.A                = [0; -400];      %start point
+Par.B                = [800; -200];     %end point
 Par.v_avg            = 2.0;         %average velocity for our UAV
 Par.dc               = 0.01;        % parametric step (t in [0,1]), controls curve resolution only
 
@@ -51,7 +51,7 @@ for i=2:num_per_side
     obs_diag(i,:)  = obs_pos;
 end
 
-[Par.obs, ~, ~, ~] = island_detection('../island_images/canada.png', true);
+[Par.obs, ~, ~, ~] = island_detection('/Aruba.png', true);
 
 
 % --- Optimization Setup ---

@@ -1,6 +1,6 @@
-function P = bernstein_path(alpha, Par)
+function P = bernstein_path(alpha_n, Par)
     % alpha: [n x 1] vector of optimization variables (deviations)
-    n = length(alpha);
+    n = length(alpha_n);
     A = Par.A;      
     B = Par.B;     
     dc = Par.dc;       
@@ -22,7 +22,7 @@ function P = bernstein_path(alpha, Par)
         % We use i=1 to n to exclude the fixed endpoints at i=0 and i=k+1
         coeff = nchoosek(k, i);
         basis = coeff .* (t.^i) .* ((1-t).^(k-i));
-        deviation = deviation + alpha(i) * basis;
+        deviation = deviation + alpha_n(i) * basis;
     end
     
     baseline = A' + t* dir_vec';

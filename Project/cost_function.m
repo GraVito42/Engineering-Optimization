@@ -14,7 +14,7 @@ function total_cost = cost_function(alpha_n, Par)
 %   D     — physical barrier formulation with d_safe [m] (geometric meaning preserved)
     
     % Compute curve features (Coords, Velocity, Acceleration, Curvature)
-    P                       = bernstein_path(alpha,Par);
+    P                       = bernstein_path(alpha_n, Par);
     [v, ~, j, k, dt, dx]    = kinematics(P, Par);
     v_n                     = vecnorm(v, 2, 2);
     Tref                    = Par.LengthReference/Par.v_avg; % Time to fly straight from A to B [s]
