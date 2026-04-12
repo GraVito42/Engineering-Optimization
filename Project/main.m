@@ -12,7 +12,7 @@ Par.dc               = 0.01;        % parametric step (t in [0,1]), controls cur
 Par.LengthReference  = 100;  % real physical distance A→B [m]
 
 % --- Cost function weights ---
-Par.w = [1.0 1.0 10.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 0.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
 Par.d_safe              = 0.5;         % Minimum safe distance from obstacle [m]
@@ -75,7 +75,7 @@ options.MaxIter                     = 500;
 options.ScaleProblem                = true;                     % Normalization of the variables
 options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
 options.FiniteDifferenceType        = 'central';
-options.FiniteDifferenceStepSize    = 1e-2;
+options.FiniteDifferenceStepSize    = Par.d_safe * 0.01;
 options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
 options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
 options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
