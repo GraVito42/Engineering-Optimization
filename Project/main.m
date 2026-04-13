@@ -51,7 +51,7 @@ for i=2:num_per_side
     obs_diag(i,:)  = obs_pos;
 end
 
-[Par.obs, ~, ~, ~] = island_detection('/Aruba.png', true);
+[Par.obs, ~, ~, ~] = island_detection('../island_images/Aruba.png', false);
 
 
 % --- Optimization Setup ---

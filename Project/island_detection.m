@@ -78,9 +78,9 @@ function [heatmap, blended, land_mask, sea_mask, img] = build_heatmap(image_path
     blended = max(0, min(1, alpha * heatmap + (1-alpha) * img_double));
 
     % --- save side-products ---
-    [~, name] = fileparts(image_path);
-    imwrite(uint8(heatmap * 255), sprintf('%s_heatmap.png', name));
-    imwrite(uint8(blended  * 255), sprintf('%s_blended.png',  name));
+    % [~, name] = fileparts(image_path);
+    % imwrite(uint8(heatmap * 255), sprintf('%s_heatmap.png', name));
+    % imwrite(uint8(blended  * 255), sprintf('%s_blended.png',  name));
 end
 
 

@@ -1,5 +1,5 @@
 function [v, a, j, k, dt, dx] = kinematics(P, Par)
-%KINEMATICS  Compute kinematic quantities along a path with physical scaling.
+% KINEMATICS  Compute kinematic quantities along a path with physical scaling.
 %
 %   P   : [N x 2] path points in PARAMETRIC coordinates (A→B = unit vector)
 %   Par : parameter struct, must contain:

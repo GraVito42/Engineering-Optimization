@@ -1,5 +1,5 @@
 clc; clear; close all;
-global Par ub lb
+global Par ub lb x0s idx
 
 addpath('island_images');
 
@@ -15,7 +15,7 @@ Par.LengthReference  = 100;  % real physical distance A→B [m]
 Par.w = [1.0 1.0 10.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
-Par.buffer              = 1/100 * norm(Par.B - Par.A);         % buffer value for obstacle constraints
+Par.buffer              = 1/1000 * norm(Par.B - Par.A);         % buffer value for obstacle constraints
 Par.max_velocity        = 5.0;         % Maximum velocity constraint
 Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
 Par.max_curvature       = 0.5;         % Maximum curvature constraint
@@ -170,7 +170,7 @@ if isempty(fcmin)
     
             step = step + 1;
             x0 = rand(n_vars,1);
-            c = Constraint(x0, Par);
+            [c, tilde] = Constraint(x0, Par);
     
             % If a point is feasible, add it to the array
             if max(c) < 1e-4
@@ -180,16 +180,16 @@ if isempty(fcmin)
                 fprintf('Found %d/%d feasible initial guesses after %d random samples.\n', ...
                         length(fc_rand)-check, length(fc_rand), step);
             else
-                if mod(step, 100) == 0
+                if mod(step, 1000) == 0
                 fprintf('Checked %d random samples, found %d feasible initial guesses so far.\n', ...
                         step, check-1);
                 end
             end
     
             %Check every n_steps to see if we found something
-            if (step == n_steps && check == 0)
+            if (step == n_steps && check == 1)
                 step = 0;
-                fprintf('No random feasible point found, looping again');
+                fprintf('No random feasible point found, looping again .\n');
                 step_step = step_step +1;
                 if step_step == 10
                     step = n_steps;
@@ -204,7 +204,7 @@ if isempty(fcmin)
 
 
 
-        if check == 0
+        if check == 1
 
             %Third way: if nothing else functioned,
             % take the smallest constraint violation
@@ -217,25 +217,88 @@ else
     idx = fcs(idxs,3);
 end
 
+lb_n = zeros(n_vars, 1);   % normalized lower bound
+ub_n = ones(n_vars, 1);    % normalized upper bound
+%x0 = x0s(idx, :);
+%
+%Plotinitialguess(Par, x0s, idx);
+% 
+% options = optimoptions('fmincon');
+% options.Display                     = 'iter-detailed';
+% options.Algorithm                   = 'sqp';
+% options.FunValCheck                 = 'off';       
+% options.MaxIter                     = 500;         
+% options.ScaleProblem                = true;                     % Normalization of the variables
+% options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
+% options.FiniteDifferenceType        = 'central';
+% options.FiniteDifferenceStepSize    = 1e-3;
+% options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
+% options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
+% options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
+% options.MaxFunEvals                 = 100000;
+% options.OutputFcn                   = {@TrajectoryPlotter_custom};
+% 
+% [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
+%     @(x) Constraint(x, Par), options);
 
-x0 = x0s(idx, :);
+x_opts = zeros(idx_rand, n_vars);
+fvals  = zeros(idx_rand, 1);
+c_opts = zeros(idx_rand, 1);
 
-Plotinitialguess(Par, x0s, idx);
+for i=1:check-1
+    x0 = x0s(n+i,:);
 
-options = optimoptions('fmincon');
-options.Display                     = 'iter-detailed';
-options.Algorithm                   = 'sqp';
-options.FunValCheck                 = 'off';       
-options.MaxIter                     = 500;         
-options.ScaleProblem                = true;                     % Normalization of the variables
-options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
-options.FiniteDifferenceType        = 'central';
-options.FiniteDifferenceStepSize    = 10;
-options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
-options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
-options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
-options.MaxFunEvals                 = 100000;
-%options.OutputFcn                   = {@TrajectoryPlotter};
+    options = optimoptions('fmincon');
+    options.Display                     = 'iter-detailed';
+    options.Algorithm                   = 'sqp';
+    options.FunValCheck                 = 'off';       
+    options.MaxIter                     = 500;         
+    options.ScaleProblem                = true;                     % Normalization of the variables
+    %options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
+    options.FiniteDifferenceType        = 'central';
+    options.FiniteDifferenceStepSize    = 1e-3;
+    options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
+    options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
+    options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
+    options.MaxFunEvals                 = 100000;
+    %options.OutputFcn                   = {@TrajectoryPlotter_custom};
 
-[x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
-    @(x) Constraint(x, Par), options);
+    [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
+        @(x) Constraint(x, Par), options);
+
+    x_opts(i,:) = x_opt;
+    fvals(i)    = FVAL;
+    c_opts(i)     = max(Constraint(x_opt, Par));
+end
+
+if min(c_opts) > 1e-4
+    every_step = 0:0.5:1;
+    every      = cell(1, n_vars);
+    [every{:}] = ndgrid(every_step);
+    every_comb = cell2mat(cellfun(@(x) x(:), every, 'UniformOutput', false));
+    
+    x_opts_ev = zeros(numel(every_comb), n_vars);
+    fvals_ev  = zeros(numel(every_comb), 1);
+    c_opts_ev = zeros(numel(every_comb), 1);
+    counter   = 0;
+
+    for i=1:numel(every_comb)
+        x0 = every_comb(i);
+        
+        c_opts_ev(i) = max(Constraint(x0,Par));
+
+        if mod(counter, 10000) == 0
+                fprintf('Checked %d random samples, found %d feasible initial guesses so far.\n', ...
+                        step, check-1);
+                end
+
+        if c_opts_ev(i) < 0
+            fprintf("FOUND FEASIBLE!")
+
+            
+
+            break
+        end
+    end
+end
+

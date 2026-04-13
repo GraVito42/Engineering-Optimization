@@ -217,27 +217,108 @@ else
     idx = fcs(idxs,3);
 end
 
-
-x0 = x0s(idx, :);
 lb_n = zeros(n_vars, 1);   % normalized lower bound
 ub_n = ones(n_vars, 1);    % normalized upper bound
+%x0 = x0s(idx, :);
+%
+%Plotinitialguess(Par, x0s, idx);
+% 
+% options = optimoptions('fmincon');
+% options.Display                     = 'iter-detailed';
+% options.Algorithm                   = 'sqp';
+% options.FunValCheck                 = 'off';       
+% options.MaxIter                     = 500;         
+% options.ScaleProblem                = true;                     % Normalization of the variables
+% options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
+% options.FiniteDifferenceType        = 'central';
+% options.FiniteDifferenceStepSize    = 1e-3;
+% options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
+% options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
+% options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
+% options.MaxFunEvals                 = 100000;
+% options.OutputFcn                   = {@TrajectoryPlotter_custom};
+% 
+% [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
+%     @(x) Constraint(x, Par), options);
 
-Plotinitialguess(Par, x0s, idx);
+x_opts = zeros(idx_rand, n_vars);
+fvals  = zeros(idx_rand, 1);
+c_opts = zeros(idx_rand, 1);
 
-options = optimoptions('fmincon');
-options.Display                     = 'iter-detailed';
-options.Algorithm                   = 'sqp';
-options.FunValCheck                 = 'off';       
-options.MaxIter                     = 500;         
-options.ScaleProblem                = true;                     % Normalization of the variables
-options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
-options.FiniteDifferenceType        = 'central';
-options.FiniteDifferenceStepSize    = 1e-2;
-options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
-options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
-options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
-options.MaxFunEvals                 = 100000;
-options.OutputFcn                   = {@TrajectoryPlotter_custom};
+for i=1:check-1
+    x0 = x0s(n+i,:);
 
-[x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
-    @(x) Constraint(x, Par), options);
+    options = optimoptions('fmincon');
+    options.Display                     = 'iter-detailed';
+    options.Algorithm                   = 'sqp';
+    options.FunValCheck                 = 'off';       
+    options.MaxIter                     = 500;         
+    options.ScaleProblem                = true;                     % Normalization of the variables
+    options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
+    options.FiniteDifferenceType        = 'central';
+    options.FiniteDifferenceStepSize    = 1e-3;
+    options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
+    options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
+    options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
+    options.MaxFunEvals                 = 100000;
+    options.OutputFcn                   = {@TrajectoryPlotter_custom};
+
+    [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
+        @(x) Constraint(x, Par), options);
+
+    x_opts(i,:) = x_opt;
+    fvals(i)    = FVAL;
+    c_opts(i)     = max(Constraint(x_opt, Par));
+end
+
+% if min(c_opts) > 1e-4
+%     every_step = 0:0.5:1;
+%     every      = cell(1, n_vars);
+%     [every{:}] = ndgrid(every_step);
+%     every_comb = cell2mat(cellfun(@(x) x(:), every, 'UniformOutput', false));
+    
+%     x_opts_ev = zeros(numel(every_comb), n_vars);
+%     fvals_ev  = zeros(numel(every_comb), 1);
+%     c_opts_ev = zeros(numel(every_comb), 1);
+%     counter   = 0;
+
+%     for i=1:numel(every_comb)
+%         counter = counter +1;
+%         x0 = every_comb(i);
+        
+%         c_opts_ev(i) = max(Constraint(x0,Par));
+
+%         if mod(counter, 10000) == 0
+%                 fprintf('Checked %d samples \n', ...
+%                         counter);
+%         end
+
+%         if c_opts_ev(i) < 0
+%             fprintf("FOUND FEASIBLE!")
+
+%             options = optimoptions('fmincon');
+%             options.Display                     = 'iter-detailed';
+%             options.Algorithm                   = 'sqp';
+%             options.FunValCheck                 = 'off';       
+%             options.MaxIter                     = 500;         
+%             options.ScaleProblem                = true;                     % Normalization of the variables
+%             options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
+%             options.FiniteDifferenceType        = 'central';
+%             options.FiniteDifferenceStepSize    = 1e-3;
+%             options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
+%             options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
+%             options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
+%             options.MaxFunEvals                 = 100000;
+%             options.OutputFcn                   = {@TrajectoryPlotter_custom};
+        
+%             [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...
+%                 @(x) Constraint(x, Par), options);
+        
+%             x_opts(i,:) = x_opt;
+%             fvals(i)    = FVAL;
+
+%             break
+%         end
+%     end
+% end
+
