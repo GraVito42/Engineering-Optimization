@@ -1,14 +1,14 @@
-function stop = TrajectoryPlotter(x, optimValues, state, hfig)
+function stop = TrajectoryPlotter_Astar(x, optimValues, state, hfig, raw_path)
+%TRAJECTORYPLOTTER_ASTAR Custom plotter that includes the A* reference path
     stop = false;
     global Par
     global details
     global ub lb
     global var_history
-
+    
     n = length(x);
-
     zeroc = {};
-
+    
     if strcmp(state, 'init') || isempty(var_history)
         var_history = table(                                        ...
             zeros(0,1),                                            ...
@@ -33,20 +33,18 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             });
         disp(Constraint(x, Par))
     end
-
+    
     if strcmp(state, 'iter')
-
         % ── Compute path and kinematics ───────────────────────────────────
         X = x(:) .* (ub - lb) + lb;
         P = bernstein_path(X, Par);
         [v, a, ~, kappa, ~, ~] = kinematics(P, Par);
-
+        
         speed    = vecnorm(v, 2, 2);
         acc_norm = vecnorm(a, 2, 2);
-
+        
         % ── Constraints ───────────────────────────────────────────────────
         [g, ~] = Constraint(x, Par);
-
         if iscell(Par.obs)
             n_obs = length(Par.obs);
         else
@@ -54,13 +52,13 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
         end
         n_v = length(speed);
         n_a = length(acc_norm);
-
+        
         g_obs  = max(g(1:n_obs));
         gg_obs = g(1:n_obs);
         g_vel  = max(g(n_obs+1         : n_obs+n_v));
         g_acc  = max(g(n_obs+n_v+1     : n_obs+n_v+n_a));
         g_curv = max(g(n_obs+n_v+n_a+1 : end));
-
+        
         % ── Cost components ───────────────────────────────────────────────
         if ~isempty(details)
             c_len  = details.length;
@@ -71,7 +69,7 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             c_len  = NaN; c_curv = NaN;
             c_time = NaN; c_jerk = NaN;
         end
-
+        
         % ── Append new row to table ───────────────────────────────────────
         new_row = table(                         ...
             optimValues.iteration,               ...
@@ -87,30 +85,28 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
                 'iter',                          ...
                 'fval',                          ...
                 'length', 'curvature', 'time', 'jerk',     ...
-                'all_obs'                                  ...
+                'all_obs',                                  ...
                 'g_obs',  'g_vel',     'g_acc', 'g_curv',  ...
                 'mean_speed', 'max_speed',       ...
                 'mean_acc',   'max_acc',         ...
                 'mean_curv',  'max_curv',        ...
                 'paths'                          ...
             });
-
         var_history = [var_history; new_row];
-
+        
         % ── Build figure ──────────────────────────────────────────────────
         set(0, 'CurrentFigure', hfig);
         clf(hfig);
-
         tl = tiledlayout(4, 4, 'TileSpacing', 'compact', 'Padding', 'compact');
         title(tl, sprintf('Degree: %d | Iter: %d | Cost: %.4f', ...
               n+1, optimValues.iteration, optimValues.fval), 'FontSize', 12);
-
         iters = var_history.iter;
-
+        
         % ── LEFT HALF [4x2]: Trajectory ──────────────────────────────────
         ax_traj = nexttile(tl, 1, [4, 2]);
         hold(ax_traj, 'on'); grid(ax_traj, 'on');
-
+        
+        % Plot ostacoli
         if iscell(Par.obs)
             for i = 1:length(Par.obs)
                 c = Par.obs{i};
@@ -127,7 +123,12 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
                      'EdgeColor', [0.4 0.4 0.4], 'FaceAlpha', 0.5);
             end
         end
-
+        
+        % (NUOVO) Disegna il percorso A* come baseline
+        if nargin >= 5 && ~isempty(raw_path)
+            plot(ax_traj, raw_path(:,1), raw_path(:,2), 'b--', 'LineWidth', 1.5);
+        end
+        
         % Ghost trails: last 5 paths faded
         n_hist = height(var_history);
         for i = max(1, n_hist-4) : n_hist-1
@@ -136,14 +137,15 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             plot(ax_traj, Pg(:,1), Pg(:,2), '-', ...
                  'Color', [0.6 0.6 0.6 alpha], 'LineWidth', 1);
         end
-
+        
+        % Disegna curva corrente
         plot(ax_traj, P(:,1), P(:,2), 'r-', 'LineWidth', 2);
         plot(ax_traj, [Par.A(1), Par.B(1)], [Par.A(2), Par.B(2)], ...
              'ko', 'MarkerFaceColor', 'g', 'MarkerSize', 8);
         axis(ax_traj, 'equal');
         xlabel(ax_traj, 'x [m]'); ylabel(ax_traj, 'y [m]');
-        title(ax_traj, 'Trajectory');
-
+        title(ax_traj, 'Trajectory (Blue: A* | Red: Bezier)');
+        
         % ── UP-RIGHT [2x2]: Cost histories ───────────────────────────────
         cost_cfg = {
             3,  'length',    'Length',    [0.85 0.33 0.10], 'o';
@@ -151,7 +153,6 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             7,  'time',      'Time',      [0.30 0.60 0.90], '^';
             8,  'jerk',      'Jerk',      [0.60 0.20 0.80], 'd';
         };
-
         for k = 1:size(cost_cfg, 1)
             ax = nexttile(tl, cost_cfg{k,1});
             hold(ax, 'on'); grid(ax, 'on');
@@ -166,7 +167,7 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             ylabel(ax, 'Value',       'FontSize', 8);
             ax.FontSize = 8;
         end
-
+        
         % ── DOWN-RIGHT [2x2]: Constraint histories ────────────────────────
         con_cfg = {
             11, 'g_obs',  'Obstacle';
@@ -174,7 +175,6 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             15, 'g_acc',  'Accel.';
             16, 'g_curv', 'Curvature';
         };
-
         for k = 1:size(con_cfg, 1)
             ax = nexttile(tl, con_cfg{k,1});
             hold(ax, 'on'); grid(ax, 'on');
@@ -195,13 +195,11 @@ function stop = TrajectoryPlotter(x, optimValues, state, hfig)
             ylabel(ax, 'max(g)',     'FontSize', 8);
             ax.FontSize = 8;
         end
-
         drawnow limitrate;
     end
-
+    
     if strcmp(state, 'done')
         fprintf('Optimization complete. Final cost: %.4f\n', optimValues.fval);
-
         % Console summary (excluding paths column)
         disp(var_history(:, ~strcmp(var_history.Properties.VariableNames, 'paths')));
     end

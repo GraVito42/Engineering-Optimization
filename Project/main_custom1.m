@@ -1,5 +1,5 @@
 clc; clear; close all;
-global Par ub lb x0s idx
+global Par ub lb x0s idx 
 
 addpath('island_images');
 

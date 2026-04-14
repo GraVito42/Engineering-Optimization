@@ -1,24 +1,27 @@
 clc; clear; close all;
-global Par ub lb
+global Par ub lb var_history
 
 addpath('island_images');
 
-% --- UAV model parameters ---
-Par.A                = [0; -400];      %start point
-Par.B                = [800; -200];     %end point
-Par.v_avg            = 2.0;         %average velocity for our UAV
-Par.dc               = 0.01;        % parametric step (t in [0,1]), controls curve resolution only
+var_history = table();                                  % initialising debug arrays
+hfig = figure('Name', 'Current Iteration results');     % initialising figure
 
-Par.LengthReference  = 100;  % real physical distance A→B [m]
+% --- UAV model parameters ---
+Par.A                = [800; -350];      %start point
+Par.B                = [0; -400];        %end point
+Par.v_avg            = 2.0;              %average velocity for our UAV
+Par.dc               = 0.01;             % parametric step (t in [0,1]), controls curve resolution only
+
+Par.LengthReference  = 1000;            % real physical distance A→B [m]
 
 % --- Cost function weights ---
-Par.w = [1.0 1.0 0.0 1.0 1.0];     % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 1.0 1.0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
-Par.d_safe              = 0.5;         % Minimum safe distance from obstacle [m]
-Par.max_velocity        = 5.0;         % Maximum velocity constraint
-Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
-Par.max_curvature       = 0.5;         % Maximum curvature constraint
+Par.d_safe              = 5;            % Minimum safe distance from obstacle [m] // are we sure it's m?
+Par.max_velocity        = 50;           % Maximum velocity constraint
+Par.max_acceleration    = 20;           % Maximum acceleration constraint
+Par.max_curvature       = 0.2;          % Maximum curvature constraint
 
 % --- obstacles --------------------------------------------------------------
 
@@ -59,7 +62,7 @@ n_vars = 13;                                            % Change this to any int
 h      = norm(Par.B - Par.A) / (n_vars/2);  % Heuristic spacing for initial guess
 
 %X0 = [1, 1, 1, 1, 1, 1, 0, -1, -1, -1, -1, -1, -1]*(h/2); 
-X0 = -ones(n_vars, 1) * h;  % Initial guess: straight line with uniform spacing
+X0 = zeros(n_vars, 1);  % Initial guess: straight line with uniform spacing
 lb = ones(n_vars, 1) *(-2)*h;
 ub = ones(n_vars, 1) * 2*h;
 
@@ -75,12 +78,12 @@ options.MaxIter                     = 500;
 options.ScaleProblem                = true;                     % Normalization of the variables
 options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
 options.FiniteDifferenceType        = 'central';
-options.FiniteDifferenceStepSize    = Par.d_safe * 0.01;
+options.FiniteDifferenceStepSize    = 1e-1;                     % Why there was Par.d_safe?
 options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
 options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
 options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
 options.MaxFunEvals                 = 100000;
-options.OutputFcn                   = {@TrajectoryPlotter};
+options.OutputFcn                   = {@(x,optiomValues,state) TrajectoryPlotter(x,optiomValues,state,hfig)};
 
 
 [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb, ub, ...

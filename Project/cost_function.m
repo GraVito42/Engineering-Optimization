@@ -13,7 +13,7 @@ function total_cost = cost_function(alpha_n, Par)
 %   J     — normalized by j_max^2 * T_ref where j_max = max_acceleration * v_avg / LengthReference
 %   D     — physical barrier formulation with d_safe [m] (geometric meaning preserved)
     
-    % Compute curve features (Coords, Velocity, Acceleration, Curvature)
+    % Compute path features (Curve, Coords, Velocity, Acceleration, Curvature)
     P                       = bernstein_path(alpha_n, Par);
     [v, ~, j, k, dt, dx]    = kinematics(P, Par);
     v_n                     = vecnorm(v, 2, 2);
@@ -28,18 +28,18 @@ function total_cost = cost_function(alpha_n, Par)
     % 2. Curvature cost
     % Integral of squared curvature over time (bending energy).
     % Normalized by value at initial guess so c_K = 1 at x0.
-    K1  = sum(k.^2) * dt;                       % [1/m² · s]
-    K   = K1 / (Par.max_curvature^2 * Tref);   % = 1 at x0 [.]
+    K1  = sum(k.^2) * dt;                       %           [1/m² · s]
+    K   = K1 / (Par.max_curvature^2 * Tref);    % = 1 at x0 [.] ????
 
     % 3. Safety cost (Reciprocal of minimum distance to obstacles)
     % Barrier penalty: zero when d_min >= d_safe, grows as path approaches obstacles.
     % d_safe has clear physical meaning [m]; no dependence on obstacle count.
-    [~, d]              = obstacle_distance(P, Par);
+    [~, d]   = obstacle_distance(P, Par);
     if min(d) <= 0
         % path is inside obstacle, so apply a penalty proportional to depth
-        D = (1 - min(d) / Par.d_safe)^2; % >1
+        D    = (1 - min(d) /(Par.LengthReference * Par.d_safe))^2; % >1
     else
-        D                 = max(0, 1 - min(d)/Par.d_safe)^2;  % Only penalize if within buffer distance
+        D    = max(0, 1 - min(d)/(Par.LengthReference * Par.d_safe))^2;  % Only penalize if within buffer distance
     end
 
     % 4. Time cost

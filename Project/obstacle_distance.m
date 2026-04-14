@@ -31,7 +31,7 @@ function [g, d] = obstacle_distance(P, Par)
             min_dist = min(min_dist_to_curve);
             
             % Constraint: buffer - min_dist <= 0 (Negative means safe)
-            g(i) = (buffer - min_dist) / buffer;
+            g(i) = (buffer - min_dist);
             
             % For generic shapes, d(i) represents the closest distance to the boundary
             d(i) = min_dist; 

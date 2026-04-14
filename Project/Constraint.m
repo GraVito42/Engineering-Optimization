@@ -7,7 +7,8 @@ function [g, ceq] = Constraint(alpha_n, Par)
     [v, a, ~, k, ~, ~] = kinematics(P, Par);
 
     % 1. Obstacle constraint
-    [g, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
+    [g_obs, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
+    g = g_obs ./ (Par.LengthReference*Par.d_safe);
 
     % 2. Velocity constraint
     v_mag = vecnorm(v, 2, 2);
