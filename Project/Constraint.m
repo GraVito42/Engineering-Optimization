@@ -8,6 +8,7 @@ function [g, ceq] = Constraint(alpha_n, Par)
 
     % 1. Obstacle constraint
     [g, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
+    [g_obs, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
 
     % 2. Velocity constraint
     v_mag = vecnorm(v, 2, 2);

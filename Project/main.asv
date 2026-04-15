@@ -12,7 +12,7 @@ Par.dc               = 0.01;        % parametric step (t in [0,1]), controls cur
 Par.LengthReference  = norm(Par.B-Par.A);  % real physical distance A→B [m]
 
 % --- Cost function weights ---
-Par.w = [10.0 5.0 5.0 1.0 5.0];     % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 10.0 1.0 5.0];     % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
 Par.d_safe              = 10.0;         % Minimum safe distance from obstacle [m]
@@ -20,7 +20,7 @@ Par.max_velocity        = 5.0;         % Maximum velocity constraint
 Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
 Par.max_curvature       = 0.5;         % Maximum curvature constraint
 Par.K_ref               = 1 / (Par.LengthReference * Par.v_avg);
-Par.J_ref               = (Par.v_avg^5) / (Par.LengthReference^3);
+Par.J_ref               = (v_avg^5) / (L_ref^3);
 % --- obstacles --------------------------------------------------------------
 
 obs_sparse     = [2,   0.2,  0.1;   
@@ -68,14 +68,14 @@ x0 = (X0 - lb)./(ub - lb);  % Normalise initial guess to [0,1]
 lb_n = zeros(n_vars,1);
 ub_n = ones(n_vars,1);
 
-% % ----- Curvature and Jerk parameters initial guess for normalization
-% % Calculate reference values for normalization
-% P_ref = bernstein_path(X0, Par); % X0 is your straight line
-% [~, ~, j_ref, k_ref, dt_ref, dx_ref] = kinematics(P_ref, Par);
-% 
-% % Store these in the Par struct to pass to the cost function
-% Par.K_ref = sum(k_ref.^2) * dt_ref;
-% Par.J_ref = sum(vecnorm(j_ref, 2, 2).^2) * dt_ref;
+% ----- Curvature and Jerk parameters initial guess for normalization
+% Calculate reference values for normalization
+P_ref = bernstein_path(X0, Par); % X0 is your straight line
+[~, ~, j_ref, k_ref, dt_ref, dx_ref] = kinematics(P_ref, Par);
+
+% Store these in the Par struct to pass to the cost function
+Par.K_ref = sum(k_ref.^2) * dt_ref;
+Par.J_ref = sum(vecnorm(j_ref, 2, 2).^2) * dt_ref;
 
 % If the straight line has 0 curvature/jerk, use a small epsilon or the 
 % theoretical max to avoid division by zero, but keep it consistent.

@@ -38,7 +38,7 @@ function [v, a, j, k, dt, dx] = kinematics(P, Par)
     j           = diff(a)      / dt;               % [N-3 x 2]  [m/s³]
 
     % --- 6. Curvature [1/m] ---
-    v_mid       = v(1:end-1,:) + v(2:end,:);       % midpoint velocity
+    v_mid       = (v(1:end-1,:) + v(2:end,:)) / 2;       % midpoint velocity
     cross_prod  = v_mid(:,1).*a(:,2) - v_mid(:,2).*a(:,1);
     k           = abs(cross_prod) ./ (vecnorm(v_mid,2,2).^3 + 1e-6);  % [1/m]
 
