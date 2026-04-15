@@ -7,7 +7,7 @@ var_history = table();                                  % initialising debug arr
 hfig = figure('Name', 'Current Iteration results');     % initialising figure
 
 % --- UAV model parameters ---
-Par.A                = [800; -350];      %start point
+Par.A                = [900; -400];      %start point
 Par.B                = [0; -400];        %end point
 Par.v_avg            = 2.0;              %average velocity for our UAV
 Par.dc               = 0.01;             % parametric step (t in [0,1]), controls curve resolution only
@@ -15,7 +15,7 @@ Par.dc               = 0.01;             % parametric step (t in [0,1]), control
 Par.LengthReference  = 1000;            % real physical distance A→B [m]
 
 % --- Cost function weights ---
-Par.w = [1.0 0.0 1.0 0.0 0.0];          % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 1.0 1.0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
 Par.d_safe              = 5;            % Minimum safe distance from obstacle [m] // are we sure it's m?
@@ -37,7 +37,7 @@ max_y = min_y + map.GridSize(1);
 
 % --- iterative optimisation setup ----------------------------------------
 n_vars_start = 2;   
-n_vars_max   = 30; 
+n_vars_max   = 100; 
 converged     = false;
 n_vars       = n_vars_start;
 
@@ -77,8 +77,7 @@ tol_fit = 12.0;                            % Max allowed geometric deviation fro
 
 while n_vars <= n_vars_max && ~converged
     fprintf('\n--- Attempt with %d variables ---\n', n_vars);
-    
-    n_vars = 100;
+
     k = n_vars + 1;
     M = zeros(length(dc_raw), n_vars);   
     for i = 1:n_vars               % building bernstein polynomial
@@ -134,7 +133,7 @@ while n_vars <= n_vars_max && ~converged
 end
 
 if ~converged
-    warning('fmincon failed to converge even with max variables (%d).', n_vars_max);
+    %warning('fmincon failed to converge even with max variables (%d).', n_vars_max);
 end
 
 % Un-scale the final result

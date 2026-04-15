@@ -24,7 +24,7 @@ function total_cost = cost_function(alpha_n, Par)
 
     % kinematic references 
     P_star   = bernstein_path(ub, Par);
-    [~, ~, j_ref, k_ref, dt_ref, ~]    = kinematics(P_star, Par);
+    [v_ref, ~, j_ref, k_ref, ~, ~]    = kinematics(P_star, Par);
 
     % 1. Length cost
     % Normalized by straight-line distance A→B.
@@ -36,7 +36,7 @@ function total_cost = cost_function(alpha_n, Par)
     % Integral of squared curvature over time (bending energy).
     % Normalized by value at initial guess so c_K = 1 at x0.
     K1  = sum(k.^2) * dt;                       %           [1/m² · s]
-    K   = K1 / (sum(k_ref.^2) * dt_ref);    % = 1 at x0 [.] ????
+    K   = K1 / (Par.max_curvature^2 * Tref);    % = 1 at x0 [.] ????
 
     % 3. Safety cost (Reciprocal of minimum distance to obstacles)
     % Barrier penalty: zero when d_min >= d_safe, grows as path approaches obstacles.
@@ -57,7 +57,8 @@ function total_cost = cost_function(alpha_n, Par)
     % Integral of squared jerk magnitude over time (smoothness).
     % Normalized by value at initial guess so c_J = 1 at x0.
     J1  = sum(vecnorm(j, 2, 2).^2) * dt;                                % [m²/s⁶ · s]
-    J   = J1 / (sum(vecnorm(j_ref, 2, 2).^2)*dt_ref);                                                 
+    j_max   = Par.max_acceleration * Par.v_avg / Par.LengthReference;   % max jerk from kinematic limits [m/s³]
+    J   = J1 / j_ref;                                       % = 1 at x0 [.]          
 
     % Weighted sum
     weights = Par.w / sum(Par.w);  % Normalize weights to sum to 1
