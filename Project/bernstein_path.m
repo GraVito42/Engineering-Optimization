@@ -1,6 +1,8 @@
 function P = bernstein_path(alpha_n, Par)
     % alpha: [n x 1] vector of optimization variables (deviations)
-    n = length(alpha_n);
+    n = length(alpha_n) /2;
+    alpha_x = alpha_n(1:n);
+    alpha_y = alpha_n(n+1:end);
     A = Par.A;      
     B = Par.B;     
     dc = Par.dc;       
@@ -15,16 +17,21 @@ function P = bernstein_path(alpha_n, Par)
     % Degree of the polynomial k = n + 1 (since alpha1...alphan are internal nodes)
     % The start (t=0) and end (t=1) points are fixed to A and B.
     k = n + 1; 
-    deviation = zeros(size(t));
+    %deviation = zeros(size(t));
+    dev_x = zeros(size(t));
+    dev_y = zeros(size(t));
     
     for i = 1:n
         % Bernstein Basis function B_{i,k}(t) = comb(k,i) * t^i * (1-t)^(k-i)
         % We use i=1 to n to exclude the fixed endpoints at i=0 and i=k+1
         coeff = nchoosek(k, i);
         basis = coeff .* (t.^i) .* ((1-t).^(k-i));
-        deviation = deviation + alpha_n(i) * basis;
+        %deviation = deviation + alpha_n(i) * basis;
+        dev_x = dev_x + alpha_x(i) * basis;
+        dev_y = dev_y + alpha_y(i) * basis;
     end
     
     baseline = A' + t* dir_vec';
-    P = baseline + deviation * n_vec';
+    %P = baseline + deviation * n_vec';
+    P = [baseline(:,1) + dev_x, baseline(:,2) + dev_y];
 end

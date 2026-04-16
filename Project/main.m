@@ -7,7 +7,7 @@ var_history = table();                                  % initialising debug arr
 hfig = figure('Name', 'Current Iteration results');     % initialising figure
 
 % --- UAV model parameters ---
-Par.A                = [900; -4000];      %start point
+Par.A                = [500; -500];      %start point
 Par.B                = [0; -400];        %end point
 Par.v_avg            = 10;              %average velocity for our UAV
 Par.dc               = 0.01;             % parametric step (t in [0,1]), controls curve resolution only
@@ -54,11 +54,11 @@ Par.max_curvature       = 0.2;          % Maximum curvature constraint
 %     obs_diag(i,:)  = obs_pos;
 % end
 % 
-[Par.obs, ~, ~, ~] = island_detection('../island_images/artic.png', false);
+[Par.obs, ~, ~, ~] = island_detection('../island_images/Aruba.png', false);
 
 
 % --- Optimization Setup ---
-n_vars = 13;                                            % Change this to any integer!
+n_vars = 2 * 13;                                            % Change this to any integer!
 h      = norm(Par.B - Par.A) / (n_vars/2);  % Heuristic spacing for initial guess
 
 %X0 = [1, 1, 1, 1, 1, 1, 0, -1, -1, -1, -1, -1, -1]*(h/2); 
