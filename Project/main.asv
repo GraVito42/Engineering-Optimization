@@ -16,7 +16,7 @@ Par.dc               = 0.01;             % parametric step (t in [0,1]), control
 Par.LengthReference = norm(Par.B - Par.A);
 
 % --- Cost function weights ---
-Par.w = [10.0 1.0 1.0 1.0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 1.0 1.0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
 Par.d_safe              = 5;            % Minimum safe distance from obstacle [m] // are we sure it's m?
@@ -55,7 +55,7 @@ Par.max_curvature       = 0.2;          % Maximum curvature constraint
 %     obs_diag(i,:)  = obs_pos;
 % end
 % 
-[Par.obs, ~, ~, ~] = island_detection('../island_images/artic.png', false);
+[Par.obs, ~, ~, ~] = island_detection('../island_images/a.png', false);
 
 
 % --- Optimization Setup ---
@@ -86,8 +86,6 @@ options.ConstraintTolerance         = 1e-4;                     % Determines the
 options.MaxFunEvals                 = 100000;
 options.OutputFcn                   = {@(x,optiomValues,state) TrajectoryPlotter(x,optiomValues,state,hfig)};
 
- num_starts = 2;
- [x_opt, FVAL] = multi_start_optimization(Par, n_vars, num_starts, options, lb_n, ub_n);
 
-%[x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb_n, ub_n, ...
-%   @(x) Constraint(x, Par), options);
+[x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb_n, ub_n, ...
+    @(x) Constraint(x, Par), options);

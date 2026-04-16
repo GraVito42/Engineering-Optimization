@@ -1,0 +1,31 @@
+function [x_opt, f_opt] = multi_start_optimization(Par, n_vars, num_starts, options, lb_n, ub_n)
+    global lb ub
+
+    f_opt = Inf;
+    x_opt = [];
+
+    for i = 1:num_starts
+        % Generate Initial Guess
+        if i == 1
+            % Start with a normalized straight line (0.5 if lb/ub are symmetric)
+            current_x0 = (zeros(n_vars, 1) - lb) ./ (ub - lb); 
+        else
+            % Random initial guess between 0 and 1
+            current_x0 = rand(n_vars, 1); 
+        end
+
+        try
+            % Use the options passed from the main script
+            [x_tmp, f_tmp, exitflag] = fmincon(@(x) cost_function(x, Par), current_x0, ...
+                [], [], [], [], lb_n, ub_n, @(x) Constraint(x, Par), options);
+            
+            % Check if this result is the best feasible solution
+            if exitflag > 0 && f_tmp < f_opt
+                f_opt = f_tmp;
+                x_opt = x_tmp;
+            end
+        catch
+            fprintf('Start %d encountered an error.\n', i);
+        end
+    end
+end

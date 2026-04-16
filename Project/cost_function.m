@@ -44,9 +44,9 @@ function total_cost = cost_function(alpha_n, Par)
     if min(d) <= 0
         % path is inside obstacle, so apply a penalty proportional to depth
         %D    = 1 - min(d)^2/(Par.LengthReference * Par.d_safe); % >1
-        D    = (1 - min(d)/(Par.d_safe)); % >1 
+        D    = (1 - min(d)/(Par.d_safe))^2; % >1 
     else
-        D    = max(0, 1 - min(d)/(Par.d_safe));  % Only penalize if within buffer distance
+        D    = max(0, 1 - min(d)/(Par.d_safe))^2;  % Only penalize if within buffer distance
     end
 
     % 4. Time cost
@@ -63,7 +63,7 @@ function total_cost = cost_function(alpha_n, Par)
 
     
     % % ----- Define Physical Jerk Scale ----- doesn't seem to change much
-    % % from the one above honestly 
+    % % from the one above honestly, supposed to calculate it based on a varying dt 
     % % We define a "jerk limit" as the ability to reach max acceleration 
     % % in the time it takes to travel the reference distance.
     % % j_limit = Par.max_acceleration / Tref; 

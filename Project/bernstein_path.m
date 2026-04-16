@@ -10,7 +10,7 @@ function P = bernstein_path(alpha_n, Par)
     
     % Geometry setup
     dir_vec = B - A;
-    L = norm(dir_vec);
+    %L = norm(dir_vec);
     %n_vec = [-dir_vec(2); dir_vec(1)] / L; % 1D
     
     % --- Generalized Bernstein Basis ---
