@@ -35,7 +35,6 @@ function total_cost = cost_function(alpha_n, Par)
     % Physical normalization: Integral of (max_curvature^2) over Tref
     K1  = sum(k.^2) * dt;                       %           [1/m² · s]
     K_limit_integral = (Par.max_curvature^2) * Tref;
-    %K   = K1 / (sum(k_ref.^2) * dt_ref);    % = 1 at x0 [.] ????
     K   = K1 / K_limit_integral;
 
     % 3. Safety cost (Reciprocal of minimum distance to obstacles)

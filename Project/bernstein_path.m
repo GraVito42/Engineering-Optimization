@@ -11,13 +11,13 @@ function P = bernstein_path(alpha_n, Par)
     % Geometry setup
     dir_vec = B - A;
     L = norm(dir_vec);
-    n_vec = [-dir_vec(2); dir_vec(1)] / L; 
+    %n_vec = [-dir_vec(2); dir_vec(1)] / L; % 1D
     
     % --- Generalized Bernstein Basis ---
     % Degree of the polynomial k = n + 1 (since alpha1...alphan are internal nodes)
     % The start (t=0) and end (t=1) points are fixed to A and B.
     k = n + 1; 
-    %deviation = zeros(size(t));
+    %deviation = zeros(size(t)); % 1D
     dev_x = zeros(size(t));
     dev_y = zeros(size(t));
     
@@ -26,12 +26,12 @@ function P = bernstein_path(alpha_n, Par)
         % We use i=1 to n to exclude the fixed endpoints at i=0 and i=k+1
         coeff = nchoosek(k, i);
         basis = coeff .* (t.^i) .* ((1-t).^(k-i));
-        %deviation = deviation + alpha_n(i) * basis;
+        %deviation = deviation + alpha_n(i) * basis; % 1D
         dev_x = dev_x + alpha_x(i) * basis;
         dev_y = dev_y + alpha_y(i) * basis;
     end
     
     baseline = A' + t* dir_vec';
-    %P = baseline + deviation * n_vec';
+    %P = baseline + deviation * n_vec'; % 1D
     P = [baseline(:,1) + dev_x, baseline(:,2) + dev_y];
 end

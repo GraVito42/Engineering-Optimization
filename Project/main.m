@@ -12,7 +12,8 @@ Par.B                = [0; -400];        %end point
 Par.v_avg            = 10;              %average velocity for our UAV
 Par.dc               = 0.01;             % parametric step (t in [0,1]), controls curve resolution only
 
-Par.LengthReference  = 1000;            % real physical distance A→B [m]
+%Par.LengthReference  = 1000;            % real physical distance A→B [m]
+Par.LengthReference = norm(Par.B - Par.A);
 
 % --- Cost function weights ---
 Par.w = [1.0 1.0 1.0 1.0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
