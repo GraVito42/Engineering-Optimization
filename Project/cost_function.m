@@ -16,10 +16,14 @@ function total_cost = cost_function(alpha_n, Par)
     % Compute curve features (Coords, Velocity, Acceleration, Curvature)
     global lb ub
     alpha = alpha_n .* (ub - lb) + lb;
-    P                       = bernstein_path(alpha_n, Par);
+    P                       = bernstein_path(alpha, Par);
     [v, ~, j, k, dt, dx]    = kinematics(P, Par);
     v_n                     = vecnorm(v, 2, 2);
     Tref                    = Par.LengthReference/Par.v_avg; % Time to fly straight from A to B [s]
+
+    % kinematic references 
+    P_star   = bernstein_path(ub, Par);
+    [~, ~, j_ref, k_ref, dt_ref, ~]    = kinematics(P_star, Par);
 
     % 1. Length cost
     % Normalized by straight-line distance A→B.
@@ -28,12 +32,11 @@ function total_cost = cost_function(alpha_n, Par)
     L                   = L1 / Par.LengthReference;  % Normalized length cost ≈ 1 for near-straight path
     
     % 2. Curvature cost
-    % Integral of squared curvature over time (bending energy).
-    % Normalized by value at initial guess so c_K = 1 at x0.
-    K1  = sum(k.^2) * dt;                       % [1/m² · s]
-    K  = K1 / Par.K_ref;
-    % following line conditioned in main
-    %K   = K1 / (Par.max_curvature^2 * Tref);   % = 1 at x0 [.]
+    % Physical normalization: Integral of (max_curvature^2) over Tref
+    K1  = sum(k.^2) * dt;                       %           [1/m² · s]
+    K_limit_integral = (Par.max_curvature^2) * Tref;
+    %K   = K1 / (sum(k_ref.^2) * dt_ref);    % = 1 at x0 [.] ????
+    K   = K1 / K_limit_integral;
 
     % 3. Safety cost (Reciprocal of minimum distance to obstacles)
     % Barrier penalty: zero when d_min >= d_safe, grows as path approaches obstacles.
@@ -41,10 +44,10 @@ function total_cost = cost_function(alpha_n, Par)
     [~, d]              = obstacle_distance(P, Par);
     if min(d) <= 0
         % path is inside obstacle, so apply a penalty proportional to depth
-        %D = (abs(min(d)) + Par.d_safe) / Par.d_safe;
-        D    = (1 - min(d) /Par.LengthReference *Par.d_safe)^2; % >1
+        %D    = 1 - min(d)^2/(Par.LengthReference * Par.d_safe); % >1
+        D    = (1 - min(d)/(Par.d_safe)); % >1 
     else
-        D    = max(0, 1 - min(d)/(Par.d_safe))^2;  % Only penalize if within buffer distance
+        D    = max(0, 1 - min(d)/(Par.d_safe));  % Only penalize if within buffer distance
     end
 
     % 4. Time cost
@@ -52,13 +55,38 @@ function total_cost = cost_function(alpha_n, Par)
     T                    = T1 / Tref;       % Normalized time cost ≈ 1 for near-straight path [.]
 
     % 5. Jerk Cost
-    % Integral of squared jerk magnitude over time (smoothness).
-    % Normalized by value at initial guess so c_J = 1 at x0.
-    J1  = sum(vecnorm(j, 2, 2).^2) * dt;                                % [m²/s⁶ · s]
-    j_max   = Par.max_acceleration * Par.v_avg / Par.LengthReference;   % max jerk from kinematic limits [m/s³]
-    J  = J1 / Par.J_ref;
-    % already in main
-    %J   = J1 / (j_max^2 * Tref);                                       % = 1 at x0 [.]          
+    % Define a physical jerk scale: how fast we can realistically change acceleration
+    % Heuristic: max_acceleration / (time to reach avg velocity)
+     J1  = sum(vecnorm(j, 2, 2).^2) * dt;                                % [m²/s⁶ · s]
+     j_scale = Par.max_acceleration / Tref;
+     J_limit_integral = (j_scale^2) * Tref;
+     J   = J1 / J_limit_integral;
+
+    
+    % % ----- Define Physical Jerk Scale ----- doesn't seem to change much
+    % % from the one above honestly 
+    % % We define a "jerk limit" as the ability to reach max acceleration 
+    % % in the time it takes to travel the reference distance.
+    % % j_limit = Par.max_acceleration / Tref; 
+    % % 
+    % % 3. Calculate Normalized Jerk Cost
+    % % Integral of ||j||^2 dt
+    % % j_mag_sq = sum(j.^2, 2); % Squared magnitude of jerk vector
+    % % 
+    % % We must match the length of dt_vec to the length of j (N-3)
+    % % Use the mid-point time steps calculated in kinematics
+    % % dt_accel = 0.5 * (dt_vec(1:end-1) + dt_vec(2:end));
+    % % dt_jerk_vec = 0.5 * (dt_accel(1:end-1) + dt_accel(2:end));
+    % % 
+    % % Numerical Integral: Sum(j^2 * dt)
+    % % J_total = sum(j_mag_sq) * dt; % scalar .* dt_jerk_vec);
+    % % 
+    % % Physical Normalization Factor (Max possible jerk integrated over Tref)
+    % % J_norm_factor = (j_limit^2) * Tref;
+    % % 
+    % % Final Normalized Jerk Cost
+    % % J = J_total / J_norm_factor;
+
 
     % Weighted sum
     weights = Par.w / sum(Par.w);  % Normalize weights to sum to 1

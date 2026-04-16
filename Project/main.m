@@ -3,84 +3,72 @@ global Par ub lb
 
 addpath('island_images');
 
+var_history = table();                                  % initialising debug arrays
+hfig = figure('Name', 'Current Iteration results');     % initialising figure
+
 % --- UAV model parameters ---
-Par.A                = [0; -400];      %start point
-Par.B                = [800; -200];     %end point
-Par.v_avg            = 2.0;         %average velocity for our UAV
-Par.dc               = 0.01;        % parametric step (t in [0,1]), controls curve resolution only
+Par.A                = [500; -500];      %start point
+Par.B                = [0; -400];        %end point
+Par.v_avg            = 10;               %average velocity for our UAV
+Par.dc               = 0.01;             % parametric step (t in [0,1]), controls curve resolution only
 
 Par.LengthReference  = norm(Par.B-Par.A);  % real physical distance A→B [m]
 
 % --- Cost function weights ---
-Par.w = [10.0 5.0 5.0 1.0 5.0];     % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 0.1 10.0 0.0 0.5];          % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
-Par.d_safe              = 10.0;         % Minimum safe distance from obstacle [m]
-Par.max_velocity        = 5.0;         % Maximum velocity constraint
-Par.max_acceleration    = 3.0;         % Maximum acceleration constraint
-Par.max_curvature       = 0.5;         % Maximum curvature constraint
-Par.K_ref               = 1 / (Par.LengthReference * Par.v_avg);
-Par.J_ref               = (Par.v_avg^5) / (Par.LengthReference^3);
+Par.d_safe              = 5;            % Minimum safe distance from obstacle [m] // are we sure it's m?
+Par.max_velocity        = 50;           % Maximum velocity constraint
+Par.max_acceleration    = 20;           % Maximum acceleration constraint
+Par.max_curvature       = 0.2;          % Maximum curvature constraint
+
 % --- obstacles --------------------------------------------------------------
 
-obs_sparse     = [2,   0.2,  0.1;   
-                  3,  -0.2,  0.1;     
-                  4,    -1,  0.8;
-                  6,     1,  0.8
-                  9,     2,  1.5];  
+% obs_sparse     = [2,   0.2,  0.1;   
+%                   3,  -0.2,  0.1;     
+%                   4,    -1,  0.8;
+%                   6,     1,  0.8
+%                   9,     2,  1.5];  
+% 
+% num_per_side   = 10; 
+% gap            = 1.2; 
+% r              = 0.3;
+% 
+% %galley of obstacles
+% x_coords       = linspace(1, 9, num_per_side); 
+% obs_top        = [x_coords', ones(num_per_side, 1) * (gap/2 + r), ones(num_per_side, 1) * r];
+% obs_bottom     = [x_coords', ones(num_per_side, 1) * -(gap/2 + r), ones(num_per_side, 1) * r];
+% obs_gallery    = [obs_top; obs_bottom];
+% 
+% %diagonal line of obstacles
+% obs_pos        = [0 -1 r];
+% obs_diag       = [zeros(num_per_side,1), zeros(num_per_side,1),ones(num_per_side,1)*r];
+% obs_diag(1,:)  = obs_pos;
+% x_step         = 1;
+% y_step         = gap/(num_per_side);
+% 
+% for i=2:num_per_side
+%     obs_pos(1) = obs_pos(1) + x_step;
+%     obs_pos(2) = obs_pos(2) + y_step;
+%     obs_diag(i,:)  = obs_pos;
+% end
 
-num_per_side   = 10; 
-gap            = 1.2; 
-r              = 0.3;
-
-%galley of obstacles
-x_coords       = linspace(1, 9, num_per_side); 
-obs_top        = [x_coords', ones(num_per_side, 1) * (gap/2 + r), ones(num_per_side, 1) * r];
-obs_bottom     = [x_coords', ones(num_per_side, 1) * -(gap/2 + r), ones(num_per_side, 1) * r];
-obs_gallery    = [obs_top; obs_bottom];
-
-%diagonal line of obstacles
-obs_pos        = [0 -1 r];
-obs_diag       = [zeros(num_per_side,1), zeros(num_per_side,1),ones(num_per_side,1)*r];
-obs_diag(1,:)  = obs_pos;
-x_step         = 1;
-y_step         = gap/(num_per_side);
-
-for i=2:num_per_side
-    obs_pos(1) = obs_pos(1) + x_step;
-    obs_pos(2) = obs_pos(2) + y_step;
-    obs_diag(i,:)  = obs_pos;
-end
-
-[Par.obs, ~, ~, ~] = island_detection('Aruba.png', true);
-
+[Par.obs, ~, ~, ~] = island_detection('Aruba.png', false);
 
 % --- Optimization Setup ---
 n_vars = 13;                                            % Change this to any integer!
 h      = norm(Par.B - Par.A) / (n_vars/2);  % Heuristic spacing for initial guess
 
 %X0 = [1, 1, 1, 1, 1, 1, 0, -1, -1, -1, -1, -1, -1]*(h/2); 
-X0 = -ones(n_vars, 1) * h;  % Initial guess: straight line with uniform spacing
 lb = ones(n_vars, 1) *(-2)*h;
 ub = ones(n_vars, 1) * 2*h;
 
+%X0 = [1, 1, 1, 1, 1, 1, 0, -1, -1, -1, -1, -1, -1]*(h/2); 
+X0 = zeros(n_vars, 1);  % Initial guess: straight line with uniform spacing
 x0 = (X0 - lb)./(ub - lb);  % Normalise initial guess to [0,1]
 lb_n = zeros(n_vars,1);
 ub_n = ones(n_vars,1);
-
-% % ----- Curvature and Jerk parameters initial guess for normalization
-% % Calculate reference values for normalization
-% P_ref = bernstein_path(X0, Par); % X0 is your straight line
-% [~, ~, j_ref, k_ref, dt_ref, dx_ref] = kinematics(P_ref, Par);
-% 
-% % Store these in the Par struct to pass to the cost function
-% Par.K_ref = sum(k_ref.^2) * dt_ref;
-% Par.J_ref = sum(vecnorm(j_ref, 2, 2).^2) * dt_ref;
-
-% If the straight line has 0 curvature/jerk, use a small epsilon or the 
-% theoretical max to avoid division by zero, but keep it consistent.
-if Par.K_ref == 0, Par.K_ref = (Par.max_curvature^2 * (Par.LengthReference/Par.v_avg)); end
-if Par.J_ref == 0, Par.J_ref = (Par.max_acceleration^2 * (Par.LengthReference/Par.v_avg)); end
 
 options = optimoptions('fmincon');
 options.Display                     = 'iter-detailed';
@@ -95,7 +83,7 @@ options.StepTolerance               = 1e-15;                    % Convergence cr
 options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
 options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
 options.MaxFunEvals                 = 100000;
-options.OutputFcn                   = {@TrajectoryPlotter};
+options.OutputFcn                   = {@(x,optiomValues,state) TrajectoryPlotter(x,optiomValues,state,hfig)};
 
 
 [x_opt, FVAL] = fmincon(@(x) cost_function(x, Par), x0, [], [], [], [], lb_n, ub_n, ...

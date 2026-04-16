@@ -23,7 +23,7 @@ function [v, a, j, k, dt, dx] = kinematics(P, Par)
 
     % --- 3. Physical arc length and travel time ---
     L_phys      = L_param * lambda;                % true path length [m]
-    T_phys      = L_phys  / Par.v_avg;             % travel time [s]
+    T_phys      = L_phys  / Par.v_avg;          % travel time [s]
 
     % --- 4. Physical time step between consecutive samples ---
     % For the finite-difference derivatives we need a uniform dt.
@@ -33,9 +33,9 @@ function [v, a, j, k, dt, dx] = kinematics(P, Par)
     % Positions are still in parametric coords → scale by lambda first.
     P_phys      = P * lambda;                      % [N x 2]  [m]
 
-    v           = diff(P_phys) / dt;               % [N-1 x 2]  [m/s]
-    a           = diff(v)      / dt;               % [N-2 x 2]  [m/s²]
-    j           = diff(a)      / dt;               % [N-3 x 2]  [m/s³]
+     v           = diff(P_phys) / dt;               % [N-1 x 2]  [m/s]
+     a           = diff(v)      / dt;               % [N-2 x 2]  [m/s²]
+     j           = diff(a)      / dt;               % [N-3 x 2]  [m/s³]
 
     % --- 6. Curvature [1/m] ---
     v_mid       = (v(1:end-1,:) + v(2:end,:)) / 2;       % midpoint velocity

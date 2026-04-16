@@ -1,6 +1,6 @@
 function [g, ceq] = Constraint(alpha_n, Par)
 
-    global ub lb
+    global ub lb 
 
     alpha = alpha_n .* (ub - lb) + lb;  % Scale from [0,1] to actual bounds
     P = bernstein_path(alpha, Par);
@@ -8,7 +8,7 @@ function [g, ceq] = Constraint(alpha_n, Par)
 
     % 1. Obstacle constraint
     [g_obs, ~] = obstacle_distance(P, Par); % (r + d_safe) - min_dist [m]
-    g = g_obs ./ (Par.d_safe);
+    g = g_obs ./ Par.d_safe;
 
     % 2. Velocity constraint
     v_mag = vecnorm(v, 2, 2);
