@@ -41,13 +41,7 @@ function total_cost = cost_function(alpha_n, Par)
     % Barrier penalty: zero when d_min >= d_safe, grows as path approaches obstacles.
     % d_safe has clear physical meaning [m]; no dependence on obstacle count.
     [~, d]              = obstacle_distance(P, Par);
-    if min(d) <= 0
-        % path is inside obstacle, so apply a penalty proportional to depth
-        %D    = 1 - min(d)^2/(Par.LengthReference * Par.d_safe); % >1
-        D    = (1 - min(d)/(Par.d_safe))^2; % >1 
-    else
-        D    = max(0, 1 - min(d)/(Par.d_safe))^2;  % Only penalize if within buffer distance
-    end
+    D    = max(0, 1 - min(d)/(Par.d_safe))^2;
 
     % 4. Time cost
     T1                   = sum(dx ./ v_n);  % actual travel time [s]
