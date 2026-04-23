@@ -1,6 +1,8 @@
 %% Post-Optimization Consistency Check
 % Run this script after fmincon finishes to verify the physical results.
 
+addpath('..\main function\')
+
 fprintf('--- Optimization Consistency Report ---\n');
 
 % 1. Reconstruct physical trajectory and kinematics
