@@ -6,8 +6,8 @@ addpath('island_images');
 var_history = table();                                  % initialising debug arrays
 
 % --- UAV model parameters ---
-Par.A                = [0; -400];      %start point
-Par.B                = [800; -450];        %end point
+Par.A                = [0;       100];      % start point
+Par.B                = [1100;   -450];      % end point
 Par.v_avg            = 10;              %average velocity for our UAV
 Par.dc               = 1e-3;             % parametric step (t in [0,1]), controls curve resolution only
 
@@ -15,7 +15,7 @@ Par.dc               = 1e-3;             % parametric step (t in [0,1]), control
 Par.LengthReference = norm(Par.B - Par.A);
 
 % --- Cost function weights ---
-Par.w = [1.0 1.0 1.0 1.0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
+Par.w = [1.0 1.0 0.2 0 1.0];          % [Length Curvature Safety Time Jerk] cost weights
 
 % Constraint parameters
 Par.d_safe              = 5;            % Minimum safe distance from obstacle [-]
@@ -24,50 +24,34 @@ Par.max_acceleration    = 20;           % Maximum acceleration constraint
 Par.max_curvature       = 0.2;          % Maximum curvature constraint
 
 % --- obstacles --------------------------------------------------------------
-
-% obs_sparse     = [2,   0.2,  0.1;   
-%                   3,  -0.2,  0.1;     
-%                   4,    -1,  0.8;
-%                   6,     1,  0.8
-%                   9,     2,  1.5];  
-% 
-% num_per_side   = 10; 
-% gap            = 1.2; 
-% r              = 0.3;
-% 
-% %galley of obstacles
-% x_coords       = linspace(1, 9, num_per_side); 
-% obs_top        = [x_coords', ones(num_per_side, 1) * (gap/2 + r), ones(num_per_side, 1) * r];
-% obs_bottom     = [x_coords', ones(num_per_side, 1) * -(gap/2 + r), ones(num_per_side, 1) * r];
-% obs_gallery    = [obs_top; obs_bottom];
-% 
-% %diagonal line of obstacles
-% obs_pos        = [0 -1 r];
-% obs_diag       = [zeros(num_per_side,1), zeros(num_per_side,1),ones(num_per_side,1)*r];
-% obs_diag(1,:)  = obs_pos;
-% x_step         = 1;
-% y_step         = gap/(num_per_side);
-% 
-% for i=2:num_per_side
-%     obs_pos(1) = obs_pos(1) + x_step;
-%     obs_pos(2) = obs_pos(2) + y_step;
-%     obs_diag(i,:)  = obs_pos;
-% end
-% 
-[Par.obs, ~, ~, ~] = island_detection('../island_images/eolie.png', false);
+[Par.obs, ~, ~, ~] = island_detection('../island_images/canada.png', false);
 
 
 % --- Optimization Setup ---
-bernstein_order = 13;                                     % Change this to any integer!
-n_vars          = 2 * bernstein_order;                                            
-h               = norm(Par.B - Par.A) / bernstein_order;  % Heuristic spacing for initial guess
+bernstein_coeff = 13;                                     % Bernstein order -1
+n_vars          = 2 * bernstein_coeff;                                            
 bound_coeff     = 3;                                      % Defines bounds dimension
+h               = norm(Par.B - Par.A) / bernstein_coeff;  % Heuristic spacing for initial guess
 
 
 %X0 = [1, 1, 1, 1, 1, 1, 0, -1, -1, -1, -1, -1, -1]*(h/2); 
 X0 = zeros(n_vars, 1);  % Initial guess: straight line with uniform spacing
-lb = ones(n_vars, 1) *(-bound_coeff)*h;
-ub = ones(n_vars, 1) * bound_coeff*h;
+
+% Bounds
+% lb = ones(n_vars, 1) *(-bound_coeff)*h;    % Old used bounds, here for backup
+% ub = ones(n_vars, 1) * bound_coeff*h;
+
+% Normal: symmetric, free to deviate left or right
+lb_eta   = -bound_coeff * h * ones(bernstein_coeff,1);
+ub_eta   =  bound_coeff * h * ones(bernstein_coeff,1);
+
+% Tangential: asymmetric — allow compression but forbid fold-back
+% The critical limit is -h (one node spacing), stay within 90% of it
+lb_tau   = -0.9 * h * ones(bernstein_coeff,1);
+ub_tau   =  bound_coeff * h * ones(bernstein_coeff,1);
+
+lb = [lb_eta; lb_tau];
+ub = [ub_eta; ub_tau];
 
 x0 = (X0 - lb)./(ub - lb);  % Normalise initial guess to [0,1]
 lb_n = zeros(n_vars,1);
@@ -82,7 +66,7 @@ options.MaxIter                     = 500;
 options.ScaleProblem                = true;                     % Normalization of the variables
 options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
 options.FiniteDifferenceType        = 'central';
-options.FiniteDifferenceStepSize    = 1e-3;                    
+options.FiniteDifferenceStepSize    = 1e-2;                    
 options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
 options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
 options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance
