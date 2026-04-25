@@ -4,7 +4,7 @@
 
 clear; clc; close all;
 
-image_path = 'Aruba.png';  % <-- change to your image
+image_path = 'artic.png';  % <-- change to your image
 
 %% STEP 1+2: Land/Sea heatmap analysis
 [heatmap, blended, land_mask, sea_mask, img_orig] = land_sea_heatmap(image_path);

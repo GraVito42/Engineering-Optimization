@@ -6,7 +6,7 @@ addpath('island_images');
 var_history = table();                                  % initialising debug arrays
 
 % --- UAV model parameters ---
-Par.A                = [0;       100];   % start point
+Par.A                = [0;       -400];   % start point
 Par.B                = [1200;   -500];   % end point
 Par.v_avg            = 10;               %average velocity for our UAV
 Par.dc               = 1e-3;             % parametric step (t in [0,1]), controls curve resolution only
@@ -30,7 +30,7 @@ Par.max_curvature       = 0.2;          % Maximum curvature constraint
 % --- Optimization Setup ---
 bernstein_coeff = 13;                                     % Bernstein order -1
 n_vars          = 2 * bernstein_coeff;                                            
-bound_coeff     = 4;                                      % Defines bounds dimension
+bound_coeff     = 3;                                      % Defines bounds dimension
 h               = norm(Par.B - Par.A) / bernstein_coeff;  % Heuristic spacing for initial guess
 
 
@@ -57,9 +57,8 @@ x0 = (X0 - lb)./(ub - lb);  % Normalise initial guess to [0,1]
 lb_n = zeros(n_vars,1);
 ub_n = ones(n_vars,1);
 
-step = 1e-3;
-step_eta = step*1e-1*ones(bernstein_coeff, 1);
-step_tau = step*ones(bernstein_coeff, 1);
+step_eta = 1e-4*ones(bernstein_coeff, 1);
+
 
 
 hfig = figure('Name', 'Current Iteration results');             % initialising figure
@@ -71,7 +70,7 @@ options.MaxIter                     = 500;
 options.ScaleProblem                = true;                     % Normalization of the variables
 options.PlotFcn                     = {@optimplotfval, @optimplotx, @optimplotfirstorderopt, @optimplotstepsize, @optimplotconstrviolation, @optimplotfunccount};
 options.FiniteDifferenceType        = 'central';
-options.FiniteDifferenceStepSize    = [step_eta; step_tau];                   
+options.FiniteDifferenceStepSize    = 1e-3;                    
 options.StepTolerance               = 1e-15;                    % Convergence criterion in step size
 options.OptimalityTolerance         = 1e-9;                     % Convergence criterion in first order optimality
 options.ConstraintTolerance         = 1e-4;                     % Determines the contraint tolerance

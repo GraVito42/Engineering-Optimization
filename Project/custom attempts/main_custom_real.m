@@ -1,0 +1,223 @@
+
+clc; clear; close all;
+global Par ub lb var_history
+ 
+addpath('..\island_images');
+addpath('..\main function\')
+ 
+var_history = table();                                  % initialising debug arrays
+hfig = figure('Name', 'Current Iteration results');     % initialising figure
+ 
+% --- UAV model parameters ---
+Par.A                = [0;       100];      % start point
+Par.B                = [1100;   -450];      % end point
+Par.v_avg            = 2.0;              % average velocity for our UAV
+Par.dc               = 0.01;            % parametric step (t in [0,1])
+ 
+Par.LengthReference  = norm(Par.B - Par.A);   % was hard-coded to 1000 — now consistent with main.m
+ 
+% --- Cost function weights ---
+Par.w = [1.0 1.0 0.2 0 1.0];          % [Length Curvature Safety Time Jerk]
+ 
+% Constraint parameters
+Par.d_safe           = 5;               % Minimum safe distance from obstacle [m]
+Par.max_velocity     = 50;
+Par.max_acceleration = 20;
+Par.max_curvature    = 0.2;
+ 
+% --- obstacles from the map image ----------------------------------------
+[Par.obs, ~, ~, ~] = island_detection('../island_images/canada.png', false);
+ 
+% --- A* global path ------------------------------------------------------
+[raw_path, map] = find_global_path(Par);
+ 
+% =========================================================================
+%  PROJECT the A* path onto ETA (normal) / TAU (tangential) Bernstein deviations
+%
+%  bernstein_path() now parametrises in the A→B local frame:
+%    P(t) = baseline(t) + dev_n(t)*n_hat + dev_t(t)*t_hat
+%  where:
+%    t_hat = (B-A)/|B-A|          unit tangent along A→B
+%    n_hat = [-t_hat(2); t_hat(1)] unit normal  (left-hand)
+%
+%  The Bernstein coefficients to fit are therefore:
+%    eta(i)  →  normal      deviation  (component along n_hat)
+%    tau(i)  →  tangential  deviation  (component along t_hat)
+%
+%  For every interior A* waypoint the deviation from baseline is:
+%    delta(t) = raw_path(t) - baseline(t)      [Nv x 2]
+%  then projected:
+%    dev_n_target = delta *  n_hat              [Nv x 1]
+%    dev_t_target = delta *  t_hat              [Nv x 1]
+%
+%  Both scalars are fitted independently with the same Bernstein basis M.
+% =========================================================================
+ 
+dir_vec = (Par.B - Par.A);              % [2x1]
+L       = norm(dir_vec);
+t_hat   = dir_vec / L;                 % unit tangent [2x1]
+n_hat   = [-t_hat(2); t_hat(1)];       % unit normal  [2x1]
+
+% Parametric coordinate t for every A* waypoint  (projection onto A→B axis)
+vec_from_A = raw_path - Par.A(:)';              % [Nwp x 2]
+t_raw      = (vec_from_A * t_hat) / L;          % [Nwp x 1]  scalar t ∈ [0,1]
+
+% Keep only interior points (0 < t < 1)
+valid_idx  = t_raw > 0 & t_raw < 1;
+t_raw      = t_raw(valid_idx);
+raw_valid  = raw_path(valid_idx, :);            % [Nv x 2]
+
+% Baseline at those t values
+baseline_at_t = Par.A(:)' + t_raw * dir_vec';  % [Nv x 2]
+
+% Deviation from baseline in global coords
+delta = raw_valid - baseline_at_t;              % [Nv x 2]
+
+% ── Project onto local frame ──────────────────────────────────────────────
+dev_n_target = delta * n_hat;                   % [Nv x 1]  normal      (eta targets)
+dev_t_target = delta * t_hat;                   % [Nv x 1]  tangential  (tau targets)
+ 
+% =========================================================================
+%  Iterative loop: increase n_vars until the A* path is well fitted AND
+%  the initial guess is obstacle-free.
+%
+%  NOTE: n_vars is the number of INTERNAL Bernstein control points.
+%        The optimisation vector has length 2*n_vars  ([alpha_x; alpha_y]).
+% =========================================================================
+n_vars_start = 4;
+n_vars_max   = 60;
+converged    = false;
+n_vars       = n_vars_start;
+ 
+tol_c   = 1e-2;    % constraint feasibility tolerance (matches options.ConstraintTolerance)
+tol_fit = 12.0;         % max geometric deviation from A* path [m]
+ 
+% --- fmincon options -----------------------------------------------------
+options = optimoptions('fmincon');
+options.Display                  = 'iter-detailed';
+options.Algorithm                = 'sqp';
+options.FunValCheck              = 'off';
+options.MaxIter                  = 500;
+options.ScaleProblem             = true;
+options.PlotFcn                  = {@optimplotfval, @optimplotx, ...
+                                    @optimplotfirstorderopt, @optimplotstepsize, ...
+                                    @optimplotconstrviolation, @optimplotfunccount};
+options.FiniteDifferenceType     = 'central';
+options.FiniteDifferenceStepSize = 1e-3;
+options.StepTolerance            = 1e-15;
+options.OptimalityTolerance      = 1e-9;
+options.ConstraintTolerance      = 1e-4;
+options.MaxFunEvals              = 100000;
+options.OutputFcn                = {@(x,optimValues,state) ...
+                                    TrajectoryPlotter_custom(x,optimValues,state,hfig,raw_path)};
+ 
+% -------------------------------------------------------------------------
+while n_vars <= n_vars_max && ~converged
+    fprintf('\n--- Attempt with %d internal control points (%d variables) ---\n', ...
+            n_vars, 2*n_vars);
+ 
+    % ── Build Bernstein basis matrix M  [Nv x n_vars] ────────────────────
+    k = n_vars + 1;
+    M = zeros(length(t_raw), n_vars);
+    for i = 1:n_vars
+        M(:, i) = nchoosek(k, i) .* (t_raw.^i) .* ((1 - t_raw).^(k - i));
+    end
+ 
+    % ── Level-1: fit quality check ────────────────────────────────────────
+    % Solve two independent least-squares problems
+    eta0      = M \ dev_n_target;       % normal      coefficients
+    tau0      = M \ dev_t_target;       % tangential  coefficients
+ 
+    fit_err_n = max(abs(dev_n_target - M*eta0));
+    fit_err_t = max(abs(dev_t_target - M*tau0));
+    fit_error = max(fit_err_n, fit_err_t);
+ 
+    if fit_error > tol_fit
+        fprintf('  Level 1 FAILED  (fit error: %.2f m > %.2f m) — increasing n_vars.\n', ...
+                fit_error, tol_fit);
+        n_vars = n_vars + 1;
+        continue;
+    else
+        fprintf('  Level 1 PASSED  (fit error: %.2f m).\n', fit_error);
+    end
+ 
+    % ── Build initial guess and bounds ────────────────────────────────────
+    % Optimisation vector: [alpha_x (n_vars); alpha_y (n_vars)]
+    x0_raw = [eta0; tau0];                          % [2*n_vars x 1]
+
+    h = L / n_vars;                                 % heuristic node spacing [m]
+    bound_coeff = 3;
+
+    lb_eta = -bound_coeff * h * ones(n_vars, 1);
+    ub_eta =  bound_coeff * h * ones(n_vars, 1);
+
+    % Tangential: allow compression but forbid fold-back (same logic as main.m)
+    lb_tau = -0.9 * h * ones(n_vars, 1);
+    ub_tau =  bound_coeff * h * ones(n_vars, 1);
+
+    lb = [lb_eta; lb_tau];
+    ub = [ub_eta; ub_tau];
+ 
+    x0_norm = (x0_raw - lb) ./ (ub - lb);   % normalise to [0,1]
+    lb_n    = zeros(2*n_vars, 1);
+    ub_n    =  ones(2*n_vars, 1);
+ 
+    % ── Level-2: initial feasibility check ───────────────────────────────
+    [g, ~]        = Constraint(x0_norm, Par);
+    max_violation = max(g(:));
+ 
+    if max_violation > tol_c
+        fprintf('  Level 2 FAILED  (max constraint violation: %.4f > %.4f) — increasing n_vars.\n', ...
+                max_violation, tol_c);
+        n_vars = n_vars + 1;
+        continue;
+    else
+        fprintf('  Level 2 PASSED  (initial guess is feasible).\n');
+    end
+ 
+    % ── Run fmincon ───────────────────────────────────────────────────────
+    [x_opt_norm, FVAL, exitflag, ~] = fmincon( ...
+        @(x) cost_function(x, Par), x0_norm, ...
+        [], [], [], [], lb_n, ub_n, ...
+        @(x) Constraint(x, Par), options);
+ 
+    if exitflag > 0
+        fprintf('Optimization CONVERGED successfully. Final cost: %.4f\n', FVAL);
+        converged = true;
+    else
+        fprintf('  fmincon did not converge (exitflag %d) — increasing n_vars.\n', exitflag);
+        n_vars = n_vars + 1;
+    end
+end
+ 
+if ~converged
+    warning('Did not converge within n_vars_max = %d.', n_vars_max);
+end
+ 
+% =========================================================================
+%  Reconstruct and display the final optimised path
+% =========================================================================
+if converged
+    X_opt = lb + x_opt_norm .* (ub - lb);   % un-normalise
+    P_opt = bernstein_path(X_opt, Par);
+ 
+    figure('Name', 'Final Optimised Path');
+    hold on; grid on; axis equal;
+ 
+    % Draw obstacle outlines
+    for i = 1:length(Par.obs)
+        c = Par.obs{i};
+        if size(c,1) < 3, continue; end
+        fill(c(:,1), c(:,2), [0.85 0.85 0.85], ...
+             'EdgeColor', [0.4 0.4 0.4], 'FaceAlpha', 0.5);
+    end
+ 
+    plot(raw_path(:,1), raw_path(:,2), 'b--', 'LineWidth', 1.5, 'DisplayName', 'A* path');
+    plot(P_opt(:,1),    P_opt(:,2),    'r-',  'LineWidth', 2,   'DisplayName', 'Optimised path');
+    plot([Par.A(1), Par.B(1)], [Par.A(2), Par.B(2)], ...
+         'ko', 'MarkerFaceColor', 'g', 'MarkerSize', 8, 'DisplayName', 'Start / End');
+    legend('Location', 'best');
+    xlabel('x [m]'); ylabel('y [m]');
+    title(sprintf('Final path — %d control points, cost = %.4f', n_vars, FVAL));
+end
+ 

@@ -2,7 +2,7 @@ function stop = TrajectoryPlotter_Astar(x, optimValues, state, hfig, raw_path)
 %TRAJECTORYPLOTTER_ASTAR Custom plotter that includes the A* reference path
     stop = false;
     global Par
-    global details
+    global detailsa
     global ub lb
     global var_history
     
